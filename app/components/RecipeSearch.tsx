@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Search, Clock, Users, Filter } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,6 +26,7 @@ export default function RecipeSearch() {
   const [loading, setLoading] = useState(false)
   const [mealType, setMealType] = useState("")
   const [diet, setDiet] = useState("")
+  const [hasSearched, setHasSearched] = useState(false)
 
   const mealTypes = [
     { value: "", label: "Todos" },
@@ -45,17 +46,17 @@ export default function RecipeSearch() {
   ]
 
   const searchRecipes = async () => {
-    if (!query.trim()) return
-
     setLoading(true)
     try {
+      const searchTerm = query.trim() === "" ? "chicken" : query.trim()
+
       const response = await fetch("/api/recipes/search", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          query,
+          query: searchTerm,
           type: mealType,
           diet,
         }),
@@ -63,17 +64,41 @@ export default function RecipeSearch() {
 
       const data = await response.json()
       setRecipes(data.results || [])
+      setHasSearched(true)
     } catch (error) {
       console.error("Error searching recipes:", error)
     } finally {
       setLoading(false)
     }
   }
-
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     searchRecipes()
   }
+
+  useEffect(() => {
+    if (!hasSearched) {
+      const fetchDefaultRecipes = async () => {
+        setLoading(true)
+        try {
+          const response = await fetch("/api/recipes/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: "chicken", type: "", diet: "" }),
+          })
+          const data = await response.json()
+          setRecipes(data.results || [])
+          setHasSearched(true)
+        } catch (error) {
+          console.error("Error cargando recetas por defecto:", error)
+        } finally {
+          setLoading(false)
+        }
+      }
+      fetchDefaultRecipes()
+    }
+  }, [hasSearched])
 
   return (
     <div className="space-y-6">
